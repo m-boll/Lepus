@@ -7,6 +7,7 @@ from ipwhois import IPWhois
 from dns.zone import from_xfr
 from termcolor import colored
 from ipaddress import ip_address
+from dns import reversename
 from dns.resolver import Resolver
 from collections import OrderedDict
 from sqlalchemy.exc import IntegrityError
@@ -36,10 +37,12 @@ def zoneTransfer(db, domain):
 	return None
 
 
-def retrieveDNSRecords(db, domain):
+def retrieveDNSRecords(db, domain, resolvers):
 	resolver = Resolver()
 	resolver.timeout = 1
 	resolver.lifetime = 1
+	resolver.nameservers = resolvers
+	resolver.rotate = True
 	types = ["A", "MX", "NS", "AAAA", "SOA", "TXT"]
 	timestamp = int(time())
 
@@ -47,7 +50,7 @@ def retrieveDNSRecords(db, domain):
 
 	for type in types:
 		try:
-			answers = resolver.query(domain, type)
+			answers = resolver.resolve(domain, type)
 
 			for answer in answers:
 				if type == "A":
@@ -81,19 +84,51 @@ def retrieveDNSRecords(db, domain):
 		print("  \__ {0}: {1}".format(colored(row.type, "cyan"), colored(row.value, "yellow")))
 
 
-def checkWildcard(timestamp, subdomain, domain):
-	try:
-		if subdomain:
-			return (subdomain, [item[4][0] for item in getaddrinfo(".".join([timestamp, subdomain, domain]), None)])
+def checkWildcard(timestamp, chunk, domain, resolver):
 
-		else:
-			return (subdomain, [item[4][0] for item in getaddrinfo(".".join([timestamp, domain]), None)])
+	result_list = []
 
-	except Exception:
-		return (subdomain, None)
+	for subdomain in chunk:
+
+		try:
+				if subdomain:
+					result = resolver.resolve('.'.join([str(timestamp), subdomain, domain]), "A")
+				else:
+					result = resolver.resolve('.'.join([str(timestamp), domain]), "A")
+
+				if(len(result) > 0):
+					result_list.append((subdomain, result))
+				else:
+					result_list.append((subdomain, None))
+
+		except Exception:
+
+			try:
+				if subdomain:
+					result = resolver.resolve('.'.join([str(timestamp), subdomain, domain]), "AAAA")
+				else:
+					result = resolver.resolve('.'.join([str(timestamp), domain]), "AAAA")
+
+				if(len(result) > 0):
+					return (subdomain, result)
+				else:
+					result_list.append((subdomain, None))
+			
+			except Exception:
+				
+				result_list.append((subdomain, None))
+	
+	return result_list
 
 
-def identifyWildcards(db, findings, domain, threads):
+def identifyWildcards(db, findings, domain, threads, resolvers):
+
+	resolver = Resolver()
+	resolver.timeout = 1
+	resolver.lifetime = 1
+	resolver.nameservers = resolvers
+	resolver.rotate = True
+
 	if len(findings) <= 10000:
 		print(colored("\n[*]-Generating samples for wildcard identification...", "yellow"))
 	
@@ -111,51 +146,38 @@ def identifyWildcards(db, findings, domain, threads):
 
 	for findingsChunk in findingsChunks:
 		sub_levels = utilities.MiscHelpers.uniqueSubdomainLevels(findingsChunk)
-		numberOfChunks = len(sub_levels) // 100000 + 1
+		numberOfChunks = len(sub_levels) // 100 + 1
 		leaveFlag = False
 
 		print("  \__ {0} {1}".format(colored("Checking for wildcards for chunk", "yellow"), colored(str(findingsChunkIterator) + "/" + str(numberOfFindingsChunks), "cyan")))
 
-		subLevelChunks = utilities.MiscHelpers.chunkify(sub_levels, 100000)
-		iteration = 1
+		subLevelChunks = utilities.MiscHelpers.chunkify(sub_levels, 100)
 
 		del sub_levels
 		collect()
 
-		for subLevelChunk in subLevelChunks:
-			with ThreadPoolExecutor(max_workers=threads) as executor:
-				tasks = {executor.submit(checkWildcard, str(timestamp), sub_level, domain) for sub_level in subLevelChunk}
+		with ThreadPoolExecutor(max_workers=threads) as executor:
+			tasks = {executor.submit(checkWildcard, str(timestamp), chunk, domain, resolver) for chunk in subLevelChunks}
 
-				try:
-					completed = as_completed(tasks)
+			try:
+				completed = as_completed(tasks)
 
-					if iteration == numberOfChunks:
-						leaveFlag = True
+				completed = tqdm(completed, total=len(tasks), desc="    \__ {0}".format(colored("Progress", "cyan")), dynamic_ncols=True, leave=leaveFlag)
 
-					if numberOfChunks == 1:
-						completed = tqdm(completed, total=len(subLevelChunk), desc="    \__ {0}".format(colored("Progress", "cyan")), dynamic_ncols=True, leave=leaveFlag)
+				for task in completed:
+					result = task.result()
 
-					else:
-						completed = tqdm(completed, total=len(subLevelChunk), desc="    \__ {0}".format(colored("Progress {0}/{1}".format(iteration, numberOfChunks), "cyan")), dynamic_ncols=True, leave=leaveFlag)
+					for entry in result:
+						if entry[1] is not None:
+							for dns_entry in entry[1]:
+								wildcards.add((".".join([entry[0], domain]), dns_entry.address))
 
-					for task in completed:
-						result = task.result()
-
-						if result[1] is not None:
-							for address in result[1]:
-								wildcards.add((".".join([result[0], domain]), address))
-
-				except KeyboardInterrupt:
-					completed.close()
-					print(colored("\n[*]-Received keyboard interrupt! Shutting down...", "red"))
-					utilities.MiscHelpers.exportFindings(db, domain, [], True)
-					executor.shutdown(wait=False)
-					exit(-1)
-
-			if iteration < numberOfChunks:
-				stderr.write("\033[F")
-
-			iteration += 1
+			except KeyboardInterrupt:
+				completed.close()
+				print(colored("\n[*]-Received keyboard interrupt! Shutting down...", "red"))
+				utilities.MiscHelpers.exportFindings(db, domain, [], True)
+				executor.shutdown(wait=False)
+				exit(-1)
 		
 		if findingsChunkIterator < numberOfFindingsChunks:
 			stdout.write("\033[F\033[F")
@@ -229,19 +251,49 @@ def identifyWildcards(db, findings, domain, threads):
 			print("      \__ {0}.{1} ==> {2}".format(colored("*", "red"), colored(hostname, "cyan"), ", ".join([colored(address, "red") for address in addresses])))
 
 
-def resolve(finding, domain):
-	try:
-		if finding[0]:
-			return (finding[0], [item[4][0] for item in getaddrinfo(".".join([finding[0], domain]), None)], finding[1])
+def resolve(chunk, domain, resolver):
+	
+	result_list = []
+	result1 = result2 = None
 
+	for finding in chunk:
+
+		try:
+			if finding[0]:
+				result1 = resolver.resolve('.'.join([finding[0], domain]), "A")
+			else:
+				result1 = resolver.resolve(domain, "A")
+
+		except Exception as e:
+			pass
+
+		try:
+			if finding[0]:
+				result2 = resolver.resolve('.'.join([finding[0], domain]), "AAAA")
+			else:
+				result2 = resolver.resolve(domain, "AAAA")
+		
+		except Exception as e:
+			pass
+
+
+		dns_list = []
+
+		if result1 is not None:
+			dns_list.append(result1)
+		
+		if result2 is not None: 
+			dns_list.append(result2)
+
+		if result1 is None and result2 is None:
+			result_list.append((finding[0], None, finding[1]))
 		else:
-			return (finding[0], [item[4][0] for item in getaddrinfo(domain, None)], finding[1])
+			result_list.append((finding[0], dns_list, finding[1]))	
 
-	except Exception:
-		return (finding[0], None, finding[1])
+	return result_list
 
 
-def massResolve(db, findings, domain, hideWildcards, threads):
+def massResolve(db, findings, domain, hideWildcards, threads, resolvers):
 	resolved = set()
 	unresolved = set()
 	wildcards = {}
@@ -249,6 +301,12 @@ def massResolve(db, findings, domain, hideWildcards, threads):
 	timestamp = int(time())
 	numberOfChunks = 1
 	leaveFlag = False
+
+	resolver = Resolver()
+	resolver.timeout = 1
+	resolver.lifetime = 1
+	resolver.nameservers = resolvers
+	resolver.rotate = True
 
 	for row in db.query(Wildcard).filter(Wildcard.domain == domain):
 		if row.subdomain:
@@ -264,62 +322,51 @@ def massResolve(db, findings, domain, hideWildcards, threads):
 			wildcards[hostname] = []
 			wildcards[hostname].append(row.address)
 
-	if len(findings) <= 100000:
+	if len(findings) <= 100:
 		print("{0} {1} {2}".format(colored("\n[*]-Attempting to resolve", "yellow"), colored(len(findings), "cyan"), colored("hostnames...", "yellow")))
 
 	else:
-		print("{0} {1} {2}".format(colored("\n[*]-Attempting to resolve", "yellow"), colored(len(findings), "cyan"), colored("hostnames, in chunks of 100,000...", "yellow")))
-		numberOfChunks = len(findings) // 100000 + 1
+		print("{0} {1} {2}".format(colored("\n[*]-Attempting to resolve", "yellow"), colored(len(findings), "cyan"), colored("hostnames, in chunks of 100...", "yellow")))
+		numberOfChunks = len(findings) // 100 + 1
 
-	findingsChunks = utilities.MiscHelpers.chunkify(findings, 100000)
+	findingsChunks = utilities.MiscHelpers.chunkify(findings, 100)
 	iteration = 1
 
-	for findingsChunk in findingsChunks:
-		with ThreadPoolExecutor(max_workers=threads) as executor:
-			tasks = {executor.submit(resolve, finding, domain) for finding in findingsChunk}
+	with ThreadPoolExecutor(max_workers=threads) as executor:
+		tasks = {executor.submit(resolve, chunk, domain, resolver) for chunk in findingsChunks}
 
-			try:
-				completed = as_completed(tasks)
+		try:
+			completed = as_completed(tasks)
 
-				if iteration == numberOfChunks:
-					leaveFlag = True
+			completed = tqdm(completed, total=len(tasks), desc="  \__ {0}".format(colored("Progress", "cyan")), dynamic_ncols=True, leave=leaveFlag)
 
-				if numberOfChunks == 1:
-					completed = tqdm(completed, total=len(findingsChunk), desc="  \__ {0}".format(colored("Progress", "cyan")), dynamic_ncols=True, leave=leaveFlag)
 
-				else:
-					completed = tqdm(completed, total=len(findingsChunk), desc="  \__ {0}".format(colored("Progress {0}/{1}".format(iteration, numberOfChunks), "cyan")), dynamic_ncols=True, leave=leaveFlag)
+			for task in completed:
+				try:
+					result = task.result()
 
-				for task in completed:
-					try:
-						result = task.result()
+					for entry in result:
+						if entry[1] is not None:
+							for dns_data in entry[1]:
+								for dns_entry in dns_data:
+									if entry[0]:
+										resolved.add((".".join([entry[0], domain]), dns_entry.address, entry[2]))
+									else:
+										resolved.add((domain, dns_entry.address, entry[2]))
 
-						if result[1] is not None:
-							for address in result[1]:
-								if result[0]:
-									resolved.add((".".join([result[0], domain]), address, result[2]))
+					else:
+						if entry[2] == "Collectors":
+							unresolved.add((entry[0], domain))
 
-								else:
-									resolved.add((domain, address, result[2]))
+				except Exception:
+					continue
 
-						else:
-							if result[2] == "Collectors":
-								unresolved.add((result[0], domain))
-
-					except Exception:
-						continue
-
-			except KeyboardInterrupt:
-				completed.close()
-				print(colored("\n[*]-Received keyboard interrupt! Shutting down...", "red"))
-				utilities.MiscHelpers.exportFindings(db, domain, [], True)
-				executor.shutdown(wait=False)
-				exit(-1)
-
-		if iteration < numberOfChunks:
-			stderr.write("\033[F")
-
-		iteration += 1
+		except KeyboardInterrupt:
+			completed.close()
+			print(colored("\n[*]-Received keyboard interrupt! Shutting down...", "red"))
+			utilities.MiscHelpers.exportFindings(db, domain, [], True)
+			executor.shutdown(wait=False)
+			exit(-1)
 
 	for hostname, address, source in resolved:
 		isWildcard = False
@@ -384,15 +431,21 @@ def massResolve(db, findings, domain, hideWildcards, threads):
 		print("      \__ {0}: {1}".format(colored(hostname, "cyan"), ", ".join([address for address in addresses])))
 
 
-def reverseLookup(IP):
-	try:
-		return (gethostbyaddr(IP)[0].lower(), IP)
+def reverseLookup(ip_chunk, resolver):
+	
+	for ip in ip_chunk:
+		
+		try:
 
-	except Exception:
-		return (None, IP)
+			tmp_addr = reversename.from_address(ip)
+			addr = resolver.resolve(tmp_addr, "PTR")[0]
+			return (addr.lower(), ip)
+
+		except Exception as e:
+			return (None, ip)
 
 
-def massReverseLookup(db, domain, IPs, threads):
+def massReverseLookup(db, domain, IPs, threads, resolvers):
 	results = set()
 	hostnames = set()
 	result_dict = {}
@@ -401,54 +454,44 @@ def massReverseLookup(db, domain, IPs, threads):
 	timestamp = int(time())
 	reverse_resolutions = OrderedDict()
 
-	if len(IPs) <= 100000:
-		print("{0} {1} {2}".format(colored("\n[*]-Performing reverse DNS lookups on", "yellow"), colored(len(IPs), "cyan"), colored("public IPs...", "yellow")))
+	resolver = Resolver()
+	resolver.timeout = 1
+	resolver.lifetime = 1
+	resolver.nameservers = resolvers
+	resolver.rotate = True
 
-	else:
-		print("{0} {1} {2}".format(colored("\n[*]-Performing reverse DNS lookups on", "yellow"), colored(len(IPs), "cyan"), colored("public IPs, in chunks of 100,000...", "yellow")))
-		numberOfChunks = len(IPs) // 100000 + 1
+	print("{0} {1} {2}".format(colored("\n[*]-Performing reverse DNS lookups on", "yellow"), colored(len(IPs), "cyan"), colored("public IPs, in chunks of 100...", "yellow")))
+	numberOfChunks = len(IPs) // 100 + 1
 
-	IPChunks = utilities.MiscHelpers.chunkify(IPs, 100000)
+	IPChunks = utilities.MiscHelpers.chunkify(IPs, 100)
 	iteration = 1
 
 	del IPs
 	collect()
 
-	for IPChunk in IPChunks:
-		with ThreadPoolExecutor(max_workers=threads) as executor:
-			tasks = {executor.submit(reverseLookup, IP) for IP in IPChunk}
+	with ThreadPoolExecutor(max_workers=threads) as executor:
+		tasks = {executor.submit(reverseLookup, chunk, resolver) for chunk in IPChunks}
 
-			try:
-				completed = as_completed(tasks)
+		try:
+			completed = as_completed(tasks)
 
-				if iteration == numberOfChunks:
-					leaveFlag = True
+			completed = tqdm(completed, total=len(tasks), desc="  \__ {0}".format(colored("Progress {0}/{1}".format(iteration, numberOfChunks), "cyan")), dynamic_ncols=True, leave=leaveFlag)
 
-				if numberOfChunks == 1:
-					completed = tqdm(completed, total=len(IPChunk), desc="  \__ {0}".format(colored("Progress", "cyan")), dynamic_ncols=True, leave=leaveFlag)
+			for task in completed:
+				result = task.result()
 
-				else:
-					completed = tqdm(completed, total=len(IPChunk), desc="  \__ {0}".format(colored("Progress {0}/{1}".format(iteration, numberOfChunks), "cyan")), dynamic_ncols=True, leave=leaveFlag)
-
-				for task in completed:
-					result = task.result()
-
-					if result[0] is not None:
-						results.add(result)
-						hostnames.add(result[0])
+				if result[0] is not None:
+					results.add(result)
+					hostnames.add(result[0])
 
 
-			except KeyboardInterrupt:
-				completed.close()
-				print(colored("\n[*]-Received keyboard interrupt! Shutting down...", "red"))
-				utilities.MiscHelpers.exportFindings(db, domain, [], True)
-				executor.shutdown(wait=False)
-				exit(-1)
+		except KeyboardInterrupt:
+			completed.close()
+			print(colored("\n[*]-Received keyboard interrupt! Shutting down...", "red"))
+			utilities.MiscHelpers.exportFindings(db, domain, [], True)
+			executor.shutdown(wait=False)
+			exit(-1)
 
-		if iteration < numberOfChunks:
-			stderr.write("\033[F")
-
-		iteration += 1
 
 	filtered_subdomains = utilities.MiscHelpers.filterDomain(domain, hostnames)
 
@@ -611,15 +654,20 @@ def massConnectScan(db, domain, numberOfUniqueIPs, targets, threads, timestamp):
 			db.rollback()
 
 
-def rdap(ip):
-	try:
-		obj = IPWhois(ip)
-		result = obj.lookup_rdap()
+def rdap(chunk):
 
-		return result
+	result_list = []
 
-	except Exception:
-		return {}
+	for ip in chunk:
+
+		try:
+			obj = IPWhois(ip)
+			result_list.append(obj.lookup_rdap())
+
+		except Exception:
+			pass
+	
+	return result_list
 
 
 def massRDAP(db, domain, threads):
@@ -652,39 +700,33 @@ def massRDAP(db, domain, threads):
 	del IPs
 	collect()
 
-	for IPChunk in IPChunks:
-		with ThreadPoolExecutor(max_workers=threads) as executor:
-			tasks = {executor.submit(rdap, IP) for IP in IPChunk}
 
-			try:
-				completed = as_completed(tasks)
+	with ThreadPoolExecutor(max_workers=threads) as executor:
+		tasks = {executor.submit(rdap, chunk) for chunk in IPChunks}
 
-				if iteration == numberOfChunks:
-					leaveFlag = True
+		try:
+			completed = as_completed(tasks)
 
-				if numberOfChunks == 1:
-					completed = tqdm(completed, total=len(IPChunk), desc="  \__ {0}".format(colored("Progress", "cyan")), dynamic_ncols=True, leave=leaveFlag)
+			if numberOfChunks == 1:
+				completed = tqdm(completed, total=len(tasks), desc="  \__ {0}".format(colored("Progress", "cyan")), dynamic_ncols=True, leave=leaveFlag)
 
-				else:
-					completed = tqdm(completed, total=len(IPChunk), desc="  \__ {0}".format(colored("Progress {0}/{1}".format(iteration, numberOfChunks), "cyan")), dynamic_ncols=True, leave=leaveFlag)
+			#else:
+			#	completed = tqdm(completed, total=len(IPChunk), desc="  \__ {0}".format(colored("Progress {0}/{1}".format(iteration, numberOfChunks), "cyan")), dynamic_ncols=True, leave=leaveFlag)
 
-				for task in completed:
-					result = task.result()
+			for task in completed:
+				results = task.result()
 
+				for result in results:
 					if result:
 						rdap_records.append(result)
 
-			except KeyboardInterrupt:
-				completed.close()
-				print(colored("\n[*]-Received keyboard interrupt! Shutting down...", "red"))
-				utilities.MiscHelpers.exportFindings(db, domain, [], True)
-				executor.shutdown(wait=False)
-				exit(-1)
+		except KeyboardInterrupt:
+			completed.close()
+			print(colored("\n[*]-Received keyboard interrupt! Shutting down...", "red"))
+			utilities.MiscHelpers.exportFindings(db, domain, [], True)
+			executor.shutdown(wait=False)
+			exit(-1)
 
-		if iteration < numberOfChunks:
-			stderr.write("\033[F")
-
-		iteration += 1
 
 	for record in rdap_records:
 		if record["asn"] != "NA" and record["asn_cidr"] != "NA" and record["asn_description"] != "NA":

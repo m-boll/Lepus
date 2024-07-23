@@ -49,6 +49,7 @@ if __name__ == "__main__":
 	parser = ArgumentParser(prog="lepus.py", description="Infrastructure OSINT")
 	parser.add_argument("domain", help="domain to search")
 	parser.add_argument("-w", "--wordlist", action="store", dest="wordlist", help="wordlist with subdomains", type=FileType("r"))
+	parser.add_argument("-rl", "--resolvers", action="store", dest="resolver_file", help="list of resolvers", type=FileType("r"))
 	parser.add_argument("-hw", "--hide-wildcards", action="store_true", dest="hideWildcards", help="hide wildcard resolutions", default=False)
 	parser.add_argument("-t", "--threads", action="store", dest="threads", help="number of threads [default is 100]", type=int, default=100)
 	parser.add_argument("-nc", "--no-collectors", action="store_true", dest="noCollectors", help="skip passive subdomain enumeration", default=False)
@@ -86,8 +87,13 @@ if __name__ == "__main__":
 	old_resolved, old_unresolved, old_takeovers = utilities.MiscHelpers.loadOldFindings(db, args.domain)
 	utilities.MiscHelpers.purgeOldFindings(db, args.domain)
 
+	if args.resolver_file:
+		resolvers_list = utilities.MiscHelpers.loadResolvers(args.domain, args.resolver_file)
+	else:
+		resolvers_list = ["9.9.9.9", "149.112.112.112", "1.1.1.1", "1.0.0.1"]
+
 	try:
-		utilities.ScanHelpers.retrieveDNSRecords(db, args.domain)
+		utilities.ScanHelpers.retrieveDNSRecords(db, args.domain, resolvers_list)
 
 		if args.zoneTransfer:
 			zt_subdomains = utilities.ScanHelpers.zoneTransfer(db, args.domain)
@@ -136,20 +142,20 @@ if __name__ == "__main__":
 		collect()
 
 		if findings:
-			utilities.ScanHelpers.identifyWildcards(db, findings, args.domain, args.threads)
-			utilities.ScanHelpers.massResolve(db, findings, args.domain, args.hideWildcards, args.threads)
+			utilities.ScanHelpers.identifyWildcards(db, findings, args.domain, args.threads, resolvers_list)
+			utilities.ScanHelpers.massResolve(db, findings, args.domain, args.hideWildcards, args.threads, resolvers_list)
 
 			del findings
 			collect()
 
 			if args.permutate:
-				submodules.Permutations.init(db, args.domain, args.permutation_wordlist, args.hideWildcards, args.threads)
+				submodules.Permutations.init(db, args.domain, args.permutation_wordlist, args.hideWildcards, args.threads, resolvers_list)
 
 			if args.reverse:
-				submodules.ReverseLookups.init(db, args.domain, args.ripe, args.ranges, args.only_ranges, args.threads)
+				submodules.ReverseLookups.init(db, args.domain, args.ripe, args.ranges, args.only_ranges, args.threads, resolvers_list)
 
 			if args.markovify:
-				submodules.Markov.init(db, args.domain, args.markov_state, args.markov_length, args.markov_quantity, args.hideWildcards, args.threads)
+				submodules.Markov.init(db, args.domain, args.markov_state, args.markov_length, args.markov_quantity, args.hideWildcards, args.threads, resolvers_list)
 
 			utilities.ScanHelpers.massRDAP(db, args.domain, args.threads)
 

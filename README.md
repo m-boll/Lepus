@@ -2,9 +2,9 @@
 [![GitHub Python](https://img.shields.io/badge/Python-%3E=%203.6-informational.svg)](https://www.python.org/)
 [![GitHub Version](https://img.shields.io/badge/Version-3.4.0-green.svg)](https://github.com/GKNSB/Lepus)
 
-# Lepus
+# Lepus Improved
 
-**Lepus** is a tool for enumerating subdomains, checking for subdomain takeovers and perform port scans - and boy, is it fast!
+This is a fork of the Lepus project which has been slightly improved in terms of speed and stability 
 
 #### Basic Usage
 
@@ -63,6 +63,12 @@ The Collectors mode collects subdomains from the following services:
 You can add your API keys in the `config.ini` file.
 
 The Collectors module will run by default on lepus. If you do not want to use the collectors during a lepus run (so that you don't exhaust your API key limits), you can use the `-nc` or `--no-collectors` argument.
+
+### Own resolvers list
+You can specify your own list of DNS resvolvers which will be randomly used by lepus. Use the `-rl` or `--resolvers` argument followed by a file. Resolvers from Google, Cloudflare and Quad9 are preset by default. 
+```
+lepus.py -rl dns_resolver.txt yahoo.com
+```
 
 ### Dictionary
 The dictionary mode can be used when you want to provide lepus a list of subdomains. You can use the `-w` or `--wordlist` argument followed by the file. A custom list comes with lepus located at `lists/subdomains.txt`. An example run would be:
@@ -249,11 +255,8 @@ lepus.py --portscan -p 80,443,8082,65123 yahoo.com
 ## Arguments
 
 ```
-usage: lepus.py [-h] [-w WORDLIST] [-hw] [-t THREADS] [-nc] [-zt]
-                [--permutate] [-pw PERMUTATION_WORDLIST] [--reverse]
-                [-r RANGES] [--portscan] [-p PORTS] [--takeover] [--markovify]
-                [-ms MARKOV_STATE] [-ml MARKOV_LENGTH] [-mq MARKOV_QUANTITY]
-                [-f] [-v]
+usage: lepus.py [-h] [-w WORDLIST] [-rl RESOLVER_FILE] [-hw] [-t THREADS] [-nc] [-zt] [--permutate] [-pw PERMUTATION_WORDLIST] [--reverse] [-ripe] [-r RANGES] [-or]
+                [--portscan] [-p PORTS] [--takeover] [--markovify] [-ms MARKOV_STATE] [-ml MARKOV_LENGTH] [-mq MARKOV_QUANTITY] [-f] [-v]
                 domain
 
 Infrastructure OSINT
@@ -261,10 +264,12 @@ Infrastructure OSINT
 positional arguments:
   domain                domain to search
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -w WORDLIST, --wordlist WORDLIST
                         wordlist with subdomains
+  -rl RESOLVER_FILE, --resolvers RESOLVER_FILE
+                        list of resolvers
   -hw, --hide-wildcards
                         hide wildcard resolutions
   -t THREADS, --threads THREADS
@@ -273,34 +278,26 @@ optional arguments:
   -zt, --zone-transfer  attempt to zone transfer from identified name servers
   --permutate           perform permutations on resolved domains
   -pw PERMUTATION_WORDLIST, --permutation-wordlist PERMUTATION_WORDLIST
-                        wordlist to perform permutations with [default is
-                        lists/words.txt]
-  --reverse             perform reverse dns lookups on resolved public IP
-                        addresses
-  -ripe, --ripe         query ripe database with the 2nd level domain 
-                        for networks to be used for reverse lookups
+                        wordlist to perform permutations with [default is lists/words.txt]
+  --reverse             perform reverse dns lookups on resolved public IP addresses
+  -ripe, --ripe         query ripe database with the 2nd level domain for networks to be used for reverse lookups
   -r RANGES, --ranges RANGES
-                        comma seperated ip ranges to perform reverse dns
-                        lookups on
-  -or, --only-ranges    use only ranges provided with -r or -ripe and not all
-                        previously identified IPs
+                        comma seperated ip ranges to perform reverse dns lookups on
+  -or, --only-ranges    use only ranges provided with -r or -ripe and not all previously identified IPs
   --portscan            scan resolved public IP addresses for open ports
   -p PORTS, --ports PORTS
-                        set of ports to be used by the portscan module
-                        [default is medium]
-  --takeover            check identified hosts for potential subdomain take-
-                        overs
+                        set of ports to be used by the portscan module [default is medium]
+  --takeover            check identified hosts for potential subdomain take-overs
   --markovify           use markov chains to identify more subdomains
   -ms MARKOV_STATE, --markov-state MARKOV_STATE
                         markov state size [default is 3]
   -ml MARKOV_LENGTH, --markov-length MARKOV_LENGTH
                         max length of markov substitutions [default is 5]
   -mq MARKOV_QUANTITY, --markov-quantity MARKOV_QUANTITY
-                        max quantity of markov results per candidate length
-                        [default is 5]
-  -f, --flush           purge all records of the specified domain from the
-                        database
+                        max quantity of markov results per candidate length [default is 5]
+  -f, --flush           purge all records of the specified domain from the database
   -v, --version         show program's version number and exit
+
 ```
 
 ## Full command example

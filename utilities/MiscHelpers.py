@@ -114,6 +114,16 @@ def loadWordlist(domain, wordlist):
 	return WL
 
 
+def loadResolvers(domain, resolvers_file):
+	print(colored("\n[*]-Loading resolvers list...", "yellow"))
+
+	RL = set([resolver.strip().lower()for resolver in resolvers_file.readlines()])
+	resolvers_file.close()
+
+	print("  \__ {0}: {1}".format(colored("Resolvers list loaded", "cyan"), colored(len(RL), "yellow")))
+	return list(RL)
+
+
 def cleanupFindings(domain, old_resolved, old_unresolved, zt, collectors, wordlist):
 	unique_subdomains = set()
 	findings = [("", "Collectors")]
@@ -170,8 +180,8 @@ def uniqueSubdomainLevels(subdomains):
 	for subdomain in subdomains:
 		subdomain_parts = subdomain[0].split(".")
 
-		for i in range(len(subdomain_parts) - 1):
-			unique_subs.add(".".join(sub for sub in subdomain[0].split(".")[i + 1:]))
+		for i in range(len(subdomain_parts)):
+			unique_subs.add(".".join(sub for sub in subdomain[0].split(".")[i:]))
 
 	return list(unique_subs)
 

@@ -102,7 +102,7 @@ def markovify(markov, subdomain, markovLength, markovQuantity):
 	return output
 
 
-def init(db, domain, markovState, markovLength, markovQuantity, hideWildcards, threads):
+def init(db, domain, markovState, markovLength, markovQuantity, hideWildcards, threads, resolvers):
 	base = set()
 
 	for row in db.query(Resolution).filter(Resolution.domain == domain, Resolution.isWildcard == False):
@@ -187,5 +187,5 @@ def init(db, domain, markovState, markovLength, markovQuantity, hideWildcards, t
 
 		print("{0} {1} {2} {3}".format(colored("\n[*]-Generated", "yellow"), colored(len(finalMarkovified), "cyan"), colored("markov candidates for chunk", "yellow"), colored(str(iteration - 1) + "/" + str(numberOfChunks), "cyan")))
 
-		identifyWildcards(db, finalMarkovified, domain, threads)
-		massResolve(db, finalMarkovified, domain, hideWildcards, threads)
+		identifyWildcards(db, finalMarkovified, domain, threads, resolvers)
+		massResolve(db, finalMarkovified, domain, hideWildcards, threads, resolvers)
