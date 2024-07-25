@@ -70,6 +70,12 @@ You can specify your own list of DNS resvolvers which will be randomly used by l
 lepus.py -rl dns_resolver.txt yahoo.com
 ```
 
+### Change location of the SQLite database file
+You can change the default location of the lepus SQLite database in filesystem. Use the `-dp`or `--database-path` followed by a path. The database will be created inside the lepus directory by default. 
+```
+lepus.py -db ../your_path/ yahoo.com
+```
+
 ### Dictionary
 The dictionary mode can be used when you want to provide lepus a list of subdomains. You can use the `-w` or `--wordlist` argument followed by the file. A custom list comes with lepus located at `lists/subdomains.txt`. An example run would be:
 

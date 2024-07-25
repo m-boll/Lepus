@@ -82,11 +82,8 @@ class Takeover(Base):
 	timestamp = Column(Integer, nullable=False)
 
 
-def init():
-	if os.path.exists("findings.sqlite"):
-		os.rename("findings.sqlite", "lepusdb.sqlite")
-
-	engine = create_engine("sqlite:///lepusdb.sqlite")
+def init(db_path):
+	engine = create_engine("sqlite:///" + os.path.abspath(os.path.join(db_path, "lepusdb.sqlite")))
 	Base.metadata.create_all(engine)
 	Base.metadata.bind = engine
 	DBSession = sessionmaker(bind=engine)

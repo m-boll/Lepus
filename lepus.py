@@ -52,6 +52,7 @@ if __name__ == "__main__":
 	parser.add_argument("-rl", "--resolvers", action="store", dest="resolver_file", help="list of resolvers", type=FileType("r"))
 	parser.add_argument("-hw", "--hide-wildcards", action="store_true", dest="hideWildcards", help="hide wildcard resolutions", default=False)
 	parser.add_argument("-t", "--threads", action="store", dest="threads", help="number of threads [default is 100]", type=int, default=100)
+	parser.add_argument("-dp", "--database-path", action="store", dest="database_path", help="specifies the path where the lepus database is stored", type=str)
 	parser.add_argument("-nc", "--no-collectors", action="store_true", dest="noCollectors", help="skip passive subdomain enumeration", default=False)
 	parser.add_argument("-zt", "--zone-transfer", action="store_true", dest="zoneTransfer", help="attempt to zone transfer from identified name servers", default=False)
 	parser.add_argument("--permutate", action="store_true", dest="permutate", help="perform permutations on resolved domains", default=False)
@@ -75,7 +76,11 @@ if __name__ == "__main__":
 		exit(1)
 
 	printBanner()
-	db = utilities.DatabaseHelpers.init()
+
+	if args.database_path:
+		db = utilities.DatabaseHelpers.init(args.database_path)
+	else:
+		db = utilities.DatabaseHelpers.init(".")
 
 	if args.doFlush:
 		utilities.MiscHelpers.purgeOldFindings(db, args.domain)
