@@ -12,35 +12,35 @@ def init(domain):
 
 	try:
 		response = requests.get(searchUrl, headers=headers)
-		IPranges = findall("value\"\s:\s\"(\d+\.\d+\.\d+\.\d+\s-\s\d+\.\d+\.\d+\.\d+)\"", response.text)
+		IPranges = findall(r"value\"\s:\s\"(\d+\.\d+\.\d+\.\d+\s-\s\d+\.\d+\.\d+\.\d+)\"", response.text)
 
 		for arange in IPranges:
 			startip = ipaddress.IPv4Address(arange.split(" - ")[0])
 			endip = ipaddress.IPv4Address(arange.split(" - ")[1])
 			cidr = str([ipaddr for ipaddr in ipaddress.summarize_address_range(startip, endip)][0])
 			R.append(cidr)
-		
+
 		R = list(set(R))
 
-		print("  \__ {0}: {1}".format(colored("Networks found", "cyan"), colored(len(R), "yellow")))
+		print(r"  \__ {0}: {1}".format(colored("Networks found", "cyan"), colored(len(R), "yellow")))
 		return R
 
 	except requests.exceptions.RequestException as err:
-		print("  \__", colored(err, "red"))
+		print(r"  \__", colored(err, "red"))
 		return []
 
 	except requests.exceptions.HTTPError as errh:
-		print("  \__", colored(errh, "red"))
+		print(r"  \__", colored(errh, "red"))
 		return []
 
 	except requests.exceptions.ConnectionError as errc:
-		print("  \__", colored(errc, "red"))
+		print(r"  \__", colored(errc, "red"))
 		return []
 
 	except requests.exceptions.Timeout as errt:
-		print("  \__", colored(errt, "red"))
+		print(r"  \__", colored(errt, "red"))
 		return []
 
 	except Exception:
-		print("  \__", colored("Something went wrong!", "red"))
+		print(r"  \__", colored("Something went wrong!", "red"))
 		return []

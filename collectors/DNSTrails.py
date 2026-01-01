@@ -14,7 +14,7 @@ def init(domain):
 	DNSTrails_API_KEY = parser.get("DNSTrails", "DNSTRAILS_API_KEY")
 
 	if DNSTrails_API_KEY == "":
-		print("  \__", colored("No DNSTrails API key configured", "red"))
+		print(r"  \__", colored("No DNSTrails API key configured", "red"))
 		return []
 
 	else:
@@ -25,7 +25,7 @@ def init(domain):
 			response = requests.get(url, headers=headers)
 
 			if response.status_code == 429:
-				print("  \__", colored("You've exceeded the usage limits for your account.", "red"))
+				print(r"  \__", colored("You've exceeded the usage limits for your account.", "red"))
 				return []
 
 			else:
@@ -36,25 +36,25 @@ def init(domain):
 
 			DT = set(DT)
 
-			print("  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(DT), "yellow")))
+			print(r"  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(DT), "yellow")))
 			return DT
 
 		except requests.exceptions.RequestException as err:
-			print("  \__", colored(err, "red"))
+			print(r"  \__", colored(err, "red"))
 			return []
 
 		except requests.exceptions.HTTPError as errh:
-			print("  \__", colored(errh, "red"))
+			print(r"  \__", colored(errh, "red"))
 			return []
 
 		except requests.exceptions.ConnectionError as errc:
-			print("  \__", colored(errc, "red"))
+			print(r"  \__", colored(errc, "red"))
 			return []
 
 		except requests.exceptions.Timeout as errt:
-			print("  \__", colored(errt, "red"))
+			print(r"  \__", colored(errt, "red"))
 			return []
 
 		except Exception:
-			print("  \__", colored("Something went wrong!", "red"))
+			print(r"  \__", colored("Something went wrong!", "red"))
 			return []

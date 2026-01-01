@@ -16,7 +16,7 @@ def init(domain):
 	api = shodan.Shodan(SHODAN_API_KEY)
 
 	if SHODAN_API_KEY == "":
-		print("  \__", colored("No Shodan API key configured", "red"))
+		print(r"  \__", colored("No Shodan API key configured", "red"))
 		return []
 
 	else:
@@ -26,21 +26,21 @@ def init(domain):
 					SD.extend([hostname for hostname in res["hostnames"] if ".{0}".format(domain) in hostname])
 
 				for res in api.search_cursor("ssl:.{0}".format(domain)):
-					SD.extend(findall("([\w\d][\w\d\-\.]*\.{0})".format(domain.replace(".", "\.")), dumps(res)))
+					SD.extend(findall(r"([\w\d][\w\d\-\.]*\.{0})".format(domain.replace(".", r"\.")), dumps(res)))
 
 			except KeyError as errk:
-				print("  \__", colored(errk, "red"))
+				print(r"  \__", colored(errk, "red"))
 				return []
 
 			SD = set(SD)
 
-			print("  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(SD), "yellow")))
+			print(r"  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(SD), "yellow")))
 			return SD
 
 		except shodan.exception.APIError as err:
-			print("  \__", colored(err, "red"))
+			print(r"  \__", colored(err, "red"))
 			return []
 
 		except Exception:
-			print("  \__", colored("Something went wrong!", "red"))
+			print(r"  \__", colored("Something went wrong!", "red"))
 			return []

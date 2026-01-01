@@ -10,17 +10,17 @@ import collectors.CertSpotter
 import collectors.CRT
 import collectors.DNSTrails
 import collectors.FOFA
-import collectors.GoogleTransparency
 import collectors.HackerTarget
 import collectors.PassiveTotal
 import collectors.PDChaos
-import collectors.ProjectCrobat
-import collectors.ProjectSonar
-import collectors.Riddler
 import collectors.Shodan
 import collectors.Spyse
 import collectors.ThreatCrowd
-import collectors.ThreatMiner
+import collectors.AlienVault
+import collectors.THC
+import collectors.RapidDNS
+import collectors.CommonCrawl
+import collectors.Anubis
 import collectors.VirusTotal
 import collectors.WaybackMachine
 import collectors.ZoomEye
@@ -117,17 +117,17 @@ if __name__ == "__main__":
 			collector_subdomains += collectors.CRT.init(args.domain)
 			collector_subdomains += collectors.DNSTrails.init(args.domain)
 			collector_subdomains += collectors.FOFA.init(args.domain)
-			collector_subdomains += collectors.GoogleTransparency.init(args.domain)
 			collector_subdomains += collectors.HackerTarget.init(args.domain)
 			collector_subdomains += collectors.PassiveTotal.init(args.domain)
 			collector_subdomains += collectors.PDChaos.init(args.domain)
-			collector_subdomains += collectors.ProjectCrobat.init(args.domain, args.ranges)
-			collector_subdomains += collectors.ProjectSonar.init(args.domain)
-			collector_subdomains += collectors.Riddler.init(args.domain)
 			collector_subdomains += collectors.Shodan.init(args.domain)
 			collector_subdomains += collectors.Spyse.init(args.domain)
 			collector_subdomains += collectors.ThreatCrowd.init(args.domain)
-			collector_subdomains += collectors.ThreatMiner.init(args.domain)
+			collector_subdomains += collectors.AlienVault.init(args.domain)
+			collector_subdomains += collectors.THC.init(args.domain)
+			collector_subdomains += collectors.RapidDNS.init(args.domain)
+			collector_subdomains += collectors.CommonCrawl.init(args.domain)
+			collector_subdomains += collectors.Anubis.init(args.domain)
 			collector_subdomains += collectors.VirusTotal.init(args.domain)
 			collector_subdomains += collectors.WaybackMachine.init(args.domain)
 			collector_subdomains += collectors.ZoomEye.init(args.domain)

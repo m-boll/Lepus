@@ -1,28 +1,29 @@
 import requests
-from urllib.parse import quote
 from termcolor import colored
 
 
 def init(domain):
-	HT = []
+	THC = []
 
-	print(colored("[*]-Searching HackerTarget...", "yellow"))
+	print(colored("[*]-Searching THC...", "yellow"))
 
-	url = "https://api.hackertarget.com/hostsearch/?q={0}".format(quote(domain))
+	url = "https://ip.thc.org/api/v1/subdomains/download"
 	headers = {"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Chrome/142.0"}
+	params = {"domain": domain, "limit": 50000, "hide_header": "true"}
 
 	try:
-		response = requests.get(url, headers=headers).text
-		hostnames = [result.split(",")[0] for result in response.split("\n")]
+		response = requests.get(url, params=params, headers=headers)
 
-		for hostname in hostnames:
-			if hostname:
-				HT.append(hostname)
+		if response.status_code == 200:
+			subdomains = response.text.strip().split("\n")
+			for subdomain in subdomains:
+				if subdomain:
+					THC.append(subdomain)
 
-		HT = set(HT)
+		THC = set(THC)
 
-		print(r"  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(HT), "yellow")))
-		return HT
+		print(r"  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(THC), "yellow")))
+		return THC
 
 	except requests.exceptions.RequestException as err:
 		print(r"  \__", colored(err, "red"))

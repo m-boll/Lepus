@@ -9,7 +9,7 @@ def init(domain):
 	print(colored("[*]-Searching CRT...", "yellow"))
 
 	parameters = {"q": "%.{0}".format(domain), "output": "json"}
-	headers = {"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0", "content-type": "application/json"}
+	headers = {"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Chrome/142.0", "content-type": "application/json"}
 
 	try:
 		response = requests.get("https://crt.sh/?", params=parameters, headers=headers)
@@ -31,29 +31,29 @@ def init(domain):
 
 			CRT = set(CRT)
 
-			print("  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(CRT), "yellow")))
+			print(r"  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(CRT), "yellow")))
 			return CRT
 
 		else:
-			print("  \__", colored("Something went wrong!", "red"))
+			print(r"  \__", colored("Something went wrong!", "red"))
 			return []
 
 	except requests.exceptions.RequestException as err:
-		print("  \__", colored(err, "red"))
+		print(r"  \__", colored(err, "red"))
 		return []
 
 	except requests.exceptions.HTTPError as errh:
-		print("  \__", colored(errh, "red"))
+		print(r"  \__", colored(errh, "red"))
 		return []
 
 	except requests.exceptions.ConnectionError as errc:
-		print("  \__", colored(errc, "red"))
+		print(r"  \__", colored(errc, "red"))
 		return []
 
 	except requests.exceptions.Timeout as errt:
-		print("  \__", colored(errt, "red"))
+		print(r"  \__", colored(errt, "red"))
 		return []
 
 	except Exception:
-		print("  \__", colored("Something went wrong!", "red"))
+		print(r"  \__", colored("Something went wrong!", "red"))
 		return []

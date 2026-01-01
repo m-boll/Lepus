@@ -17,7 +17,7 @@ def init(domain):
 	FOFA_KEY = parser.get("FOFA", "FOFA_KEY")
 
 	if FOFA_EMAIL == "" or FOFA_KEY == "":
-		print("  \__", colored("No FOFA API credentials configured", "red"))
+		print(r"  \__", colored("No FOFA API credentials configured", "red"))
 		return []
 
 	size = 10000
@@ -46,36 +46,36 @@ def init(domain):
 					response = requests.get("https://fofa.so/api/v1/search/all", params=parameters, headers=headers)
 
 				if loads(response.text)["error"] is False:
-					FOFA.extend([item.lower() for item in findall("([\w\d][\w\d\-\.]*\.{0})".format(domain.replace(".", "\.")), response.text)])
+					FOFA.extend([item.lower() for item in findall(r"([\w\d][\w\d\-\.]*\.{0})".format(domain.replace(".", r"\.")), response.text)])
 					page += 1
 				else:
 					break
 
 			FOFA = set(FOFA)
 
-			print("  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(FOFA), "yellow")))
+			print(r"  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(FOFA), "yellow")))
 			return FOFA
 
 		else:
-			print("  \__", colored("Something went wrong!", "red"))
+			print(r"  \__", colored("Something went wrong!", "red"))
 			return []
 
 	except requests.exceptions.RequestException as err:
-		print("  \__", colored(err, "red"))
+		print(r"  \__", colored(err, "red"))
 		return []
 
 	except requests.exceptions.HTTPError as errh:
-		print("  \__", colored(errh, "red"))
+		print(r"  \__", colored(errh, "red"))
 		return []
 
 	except requests.exceptions.ConnectionError as errc:
-		print("  \__", colored(errc, "red"))
+		print(r"  \__", colored(errc, "red"))
 		return []
 
 	except requests.exceptions.Timeout as errt:
-		print("  \__", colored(errt, "red"))
+		print(r"  \__", colored(errt, "red"))
 		return []
 
 	except Exception:
-		print("  \__", colored("Something went wrong!", "red"))
+		print(r"  \__", colored("Something went wrong!", "red"))
 		return []

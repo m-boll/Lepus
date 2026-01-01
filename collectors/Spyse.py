@@ -14,11 +14,11 @@ def init(domain):
 	SPYSE_API_TOKEN = parser.get("Spyse", "SPYSE_API_TOKEN")
 
 	if SPYSE_API_TOKEN == "":
-		print("  \__", colored("No Spyse API token configured", "red"))
+		print(r"  \__", colored("No Spyse API token configured", "red"))
 		return []
 
 	headers = {
-		"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0",
+		"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Chrome/142.0",
 		"Authorization": "Bearer {0}".format(SPYSE_API_TOKEN),
 		"accept": "application/json"
 	}
@@ -59,33 +59,33 @@ def init(domain):
 
 			SP = set(SP)
 
-			print("  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(SP), "yellow")))
+			print(r"  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(SP), "yellow")))
 			return SP
 
 		elif response.status_code == 401:
-			print("  \__", colored("Authentication error.", "red"))
+			print(r"  \__", colored("Authentication error.", "red"))
 			return []
 
 		elif response.status_code == 402:
-			print("  \__", colored("Request quota exceeded.", "red"))
+			print(r"  \__", colored("Request quota exceeded.", "red"))
 			return []
 
 	except requests.exceptions.RequestException as err:
-		print("  \__", colored(err, "red"))
+		print(r"  \__", colored(err, "red"))
 		return []
 
 	except requests.exceptions.HTTPError as errh:
-		print("  \__", colored(errh, "red"))
+		print(r"  \__", colored(errh, "red"))
 		return []
 
 	except requests.exceptions.ConnectionError as errc:
-		print("  \__", colored(errc, "red"))
+		print(r"  \__", colored(errc, "red"))
 		return []
 
 	except requests.exceptions.Timeout as errt:
-		print("  \__", colored(errt, "red"))
+		print(r"  \__", colored(errt, "red"))
 		return []
 
 	except Exception:
-		print("  \__", colored("Something went wrong!", "red"))
+		print(r"  \__", colored("Something went wrong!", "red"))
 		return []

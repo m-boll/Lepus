@@ -1,28 +1,29 @@
 import requests
-from urllib.parse import quote
+from json import loads
 from termcolor import colored
 
 
 def init(domain):
-	HT = []
+	ANUBIS = []
 
-	print(colored("[*]-Searching HackerTarget...", "yellow"))
+	print(colored("[*]-Searching Anubis...", "yellow"))
 
-	url = "https://api.hackertarget.com/hostsearch/?q={0}".format(quote(domain))
+	url = "https://anubisdb.com/anubis/subdomains/{0}".format(domain)
 	headers = {"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Chrome/142.0"}
 
 	try:
-		response = requests.get(url, headers=headers).text
-		hostnames = [result.split(",")[0] for result in response.split("\n")]
+		response = requests.get(url, headers=headers)
 
-		for hostname in hostnames:
-			if hostname:
-				HT.append(hostname)
+		if response.status_code == 200:
+			subdomains = loads(response.text)
 
-		HT = set(HT)
+			if isinstance(subdomains, list):
+				ANUBIS.extend(subdomains)
 
-		print(r"  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(HT), "yellow")))
-		return HT
+		ANUBIS = set(ANUBIS)
+
+		print(r"  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(ANUBIS), "yellow")))
+		return ANUBIS
 
 	except requests.exceptions.RequestException as err:
 		print(r"  \__", colored(err, "red"))

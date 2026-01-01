@@ -9,11 +9,12 @@ def init(domain):
 
 	print(colored("[*]-Searching WaybackMachine...", "yellow"))
 
-	url = "http://web.archive.org/cdx/search/cdx?url=*.{0}&output=json&fl=original&collapse=urlkey".format(quote(domain))
-	headers = {"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0"}
+	url = "http://web.archive.org/cdx/search/cdx?url=*.{0}&output=json&collapse=urlkey".format(quote(domain))
+	headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Chrome/142.0"}
 
 	try:
 		response = requests.get(url, headers=headers)
+		print(response.text)
 		urls = response.json()
 
 		for url in urls:
@@ -29,29 +30,29 @@ def init(domain):
 
 		WB = set(WB)
 
-		print("  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(WB), "yellow")))
+		print(r"  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(WB), "yellow")))
 		return WB
 
 	except ValueError as errv:
-		print("  \__", colored(errv, "red"))
+		print(r"  \__", colored(errv, "red"))
 		return []
 
 	except requests.exceptions.RequestException as err:
-		print("  \__", colored(err, "red"))
+		print(r"  \__", colored(err, "red"))
 		return []
 
 	except requests.exceptions.HTTPError as errh:
-		print("  \__", colored(errh, "red"))
+		print(r"  \__", colored(errh, "red"))
 		return []
 
 	except requests.exceptions.ConnectionError as errc:
-		print("  \__", colored(errc, "red"))
+		print(r"  \__", colored(errc, "red"))
 		return []
 
 	except requests.exceptions.Timeout as errt:
-		print("  \__", colored(errt, "red"))
+		print(r"  \__", colored(errt, "red"))
 		return []
 
 	except Exception:
-		print("  \__", colored("Something went wrong!", "red"))
+		print(r"  \__", colored("Something went wrong!", "red"))
 		return []

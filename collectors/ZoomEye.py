@@ -15,7 +15,7 @@ def init(domain):
 	ZOOMEYE_API_KEY = parser.get("ZoomEye", "ZOOMEYE_API_KEY")
 
 	if ZOOMEYE_API_KEY == "":
-		print("  \__", colored("No ZoomEye API key configured", "red"))
+		print(r"  \__", colored("No ZoomEye API key configured", "red"))
 		return []
 
 	headers = {"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0", "API-KEY": ZOOMEYE_API_KEY}
@@ -26,40 +26,40 @@ def init(domain):
 		while testFlag:
 			url = "https://api.zoomeye.org/host/search?query=hostname:{0}&page={1}".format(domain, page)
 			response = requests.get(url, headers=headers)
-			
+
 			if response.status_code == 200 and loads(response.text)["available"] > 0:
-				subdomains = findall("[-\.\w\d]+\.{0}".format(domain.replace(".", "\.")), response.text)
+				subdomains = findall(r"[-\.\w\d]+\.{0}".format(domain.replace(".", r"\.")), response.text)
 
 				if subdomains:
 					for subdomain in subdomains:
 						ZOOM.append("{0}.{1}".format(subdomain, domain))
-				
+
 				page = page + 1
-			
+
 			else:
 				testFlag = False
 
 		ZOOM = set(ZOOM)
 
-		print("  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(ZOOM), "yellow")))
+		print(r"  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(ZOOM), "yellow")))
 		return ZOOM
 
 	except requests.exceptions.RequestException as err:
-		print("  \__", colored(err, "red"))
+		print(r"  \__", colored(err, "red"))
 		return []
 
 	except requests.exceptions.HTTPError as errh:
-		print("  \__", colored(errh, "red"))
+		print(r"  \__", colored(errh, "red"))
 		return []
 
 	except requests.exceptions.ConnectionError as errc:
-		print("  \__", colored(errc, "red"))
+		print(r"  \__", colored(errc, "red"))
 		return []
 
 	except requests.exceptions.Timeout as errt:
-		print("  \__", colored(errt, "red"))
+		print(r"  \__", colored(errt, "red"))
 		return []
 
 	except Exception:
-		print("  \__", colored("Something went wrong!", "red"))
+		print(r"  \__", colored("Something went wrong!", "red"))
 		return []

@@ -8,11 +8,14 @@ def init(domain):
 
 	print(colored("[*]-Searching ThreatCrowd...", "yellow"))
 
+	url = "http://ci-www.threatcrowd.org/searchApi/v2/domain/report/"
+	headers = {"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Chrome/142.0"}
+
 	try:
-		result = requests.get("https://www.threatcrowd.org/searchApi/v2/domain/report/", params={"domain": domain})
+		response = requests.get(url, params={"domain": domain}, headers=headers)
 
 		try:
-			RES = loads(result.text)
+			RES = loads(response.text)
 			resp_code = int(RES["response_code"])
 
 			if resp_code == 1:
@@ -21,29 +24,29 @@ def init(domain):
 
 			TC = set(TC)
 
-			print("  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(TC), "yellow")))
+			print(r"  \__ {0}: {1}".format(colored("Subdomains found", "cyan"), colored(len(TC), "yellow")))
 			return TC
 
 		except ValueError as errv:
-			print("  \__", colored(errv, "red"))
+			print(r"  \__", colored(errv, "red"))
 			return []
 
 	except requests.exceptions.RequestException as err:
-		print("  \__", colored(err, "red"))
+		print(r"  \__", colored(err, "red"))
 		return []
 
 	except requests.exceptions.HTTPError as errh:
-		print("  \__", colored(errh, "red"))
+		print(r"  \__", colored(errh, "red"))
 		return []
 
 	except requests.exceptions.ConnectionError as errc:
-		print("  \__", colored(errc, "red"))
+		print(r"  \__", colored(errc, "red"))
 		return []
 
 	except requests.exceptions.Timeout as errt:
-		print("  \__", colored(errt, "red"))
+		print(r"  \__", colored(errt, "red"))
 		return []
 
 	except Exception:
-		print("  \__", colored("Something went wrong!", "red"))
+		print(r"  \__", colored("Something went wrong!", "red"))
 		return []

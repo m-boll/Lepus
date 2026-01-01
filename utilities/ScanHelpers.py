@@ -27,13 +27,13 @@ def zoneTransfer(db, domain):
 			zone = from_xfr(xfr(row.value, domain))
 			subdomains = set([str(key) for key in zone.nodes.keys()])
 
-			print("  \__ {0}: {1}".format(colored("Subdomains retrieved", "cyan"), colored(len(subdomains), "yellow")))
+			print(r"  \__ {0}: {1}".format(colored("Subdomains retrieved", "cyan"), colored(len(subdomains), "yellow")))
 			return subdomains
 
 		except Exception:
 			continue
 
-	print("  \__", colored("Failed to zone transfer.", "red"))
+	print(r"  \__", colored("Failed to zone transfer.", "red"))
 	return None
 
 
@@ -81,7 +81,7 @@ def retrieveDNSRecords(db, domain, resolvers):
 			pass
 
 	for row in db.query(Record).filter(Record.domain == domain).order_by(Record.type):
-		print("  \__ {0}: {1}".format(colored(row.type, "cyan"), colored(row.value, "yellow")))
+		print(r"  \__ {0}: {1}".format(colored(row.type, "cyan"), colored(row.value, "yellow")))
 
 
 def checkWildcard(timestamp, chunk, domain, resolver):
@@ -149,7 +149,7 @@ def identifyWildcards(db, findings, domain, threads, resolvers):
 		numberOfChunks = len(sub_levels) // 100 + 1
 		leaveFlag = False
 
-		print("  \__ {0} {1}".format(colored("Checking for wildcards for chunk", "yellow"), colored(str(findingsChunkIterator) + "/" + str(numberOfFindingsChunks), "cyan")))
+		print(r"  \__ {0} {1}".format(colored("Checking for wildcards for chunk", "yellow"), colored(str(findingsChunkIterator) + "/" + str(numberOfFindingsChunks), "cyan")))
 
 		subLevelChunks = utilities.MiscHelpers.chunkify(sub_levels, 100)
 
@@ -162,7 +162,7 @@ def identifyWildcards(db, findings, domain, threads, resolvers):
 			try:
 				completed = as_completed(tasks)
 
-				completed = tqdm(completed, total=len(tasks), desc="    \__ {0}".format(colored("Progress", "cyan")), dynamic_ncols=True, leave=leaveFlag)
+				completed = tqdm(completed, total=len(tasks), desc=r"    \__ {0}".format(colored("Progress", "cyan")), dynamic_ncols=True, leave=leaveFlag)
 
 				for task in completed:
 					result = task.result()
@@ -170,7 +170,11 @@ def identifyWildcards(db, findings, domain, threads, resolvers):
 					for entry in result:
 						if entry[1] is not None:
 							for dns_entry in entry[1]:
-								wildcards.add((".".join([entry[0], domain]), dns_entry.address))
+								# Handle both string and DNS record objects
+								if hasattr(dns_entry, 'address'):
+									wildcards.add((".".join([entry[0], domain]), dns_entry.address))
+								else:
+									wildcards.add((".".join([entry[0], domain]), str(dns_entry)))
 
 			except KeyboardInterrupt:
 				completed.close()
@@ -245,10 +249,10 @@ def identifyWildcards(db, findings, domain, threads, resolvers):
 				new_wildcards[hostname] = []
 				new_wildcards[hostname].append(row.address)
 
-		print("    \__ {0}: {1}".format(colored("New wildcards that were identified", "yellow"), colored(len(new_wildcards.items()), "cyan")))
+		print(r"    \__ {0}: {1}".format(colored("New wildcards that were identified", "yellow"), colored(len(new_wildcards.items()), "cyan")))
 
 		for hostname, addresses in new_wildcards.items():
-			print("      \__ {0}.{1} ==> {2}".format(colored("*", "red"), colored(hostname, "cyan"), ", ".join([colored(address, "red") for address in addresses])))
+			print(r"      \__ {0}.{1} ==> {2}".format(colored("*", "red"), colored(hostname, "cyan"), ", ".join([colored(address, "red") for address in addresses])))
 
 
 def resolve(chunk, domain, resolver):
@@ -338,7 +342,7 @@ def massResolve(db, findings, domain, hideWildcards, threads, resolvers):
 		try:
 			completed = as_completed(tasks)
 
-			completed = tqdm(completed, total=len(tasks), desc="  \__ {0}".format(colored("Progress", "cyan")), dynamic_ncols=True, leave=leaveFlag)
+			completed = tqdm(completed, total=len(tasks), desc=r"  \__ {0}".format(colored("Progress", "cyan")), dynamic_ncols=True, leave=leaveFlag)
 
 
 			for task in completed:
@@ -425,10 +429,10 @@ def massResolve(db, findings, domain, hideWildcards, threads, resolvers):
 				new_resolutions[hostname] = []
 				new_resolutions[hostname].append(address)
 
-	print("    \__ {0}: {1}".format(colored("New hostnames that were resolved", "yellow"), colored(len(new_resolutions.items()), "cyan")))
+	print(r"    \__ {0}: {1}".format(colored("New hostnames that were resolved", "yellow"), colored(len(new_resolutions.items()), "cyan")))
 
 	for hostname, addresses in new_resolutions.items():
-		print("      \__ {0}: {1}".format(colored(hostname, "cyan"), ", ".join([address for address in addresses])))
+		print(r"      \__ {0}: {1}".format(colored(hostname, "cyan"), ", ".join([address for address in addresses])))
 
 
 def reverseLookup(ip_chunk, resolver):
@@ -475,7 +479,7 @@ def massReverseLookup(db, domain, IPs, threads, resolvers):
 		try:
 			completed = as_completed(tasks)
 
-			completed = tqdm(completed, total=len(tasks), desc="  \__ {0}".format(colored("Progress {0}/{1}".format(iteration, numberOfChunks), "cyan")), dynamic_ncols=True, leave=leaveFlag)
+			completed = tqdm(completed, total=len(tasks), desc=r"  \__ {0}".format(colored("Progress {0}/{1}".format(iteration, numberOfChunks), "cyan")), dynamic_ncols=True, leave=leaveFlag)
 
 			for task in completed:
 				result = task.result()
@@ -545,10 +549,10 @@ def massReverseLookup(db, domain, IPs, threads, resolvers):
 			reverse_resolutions[hostname] = []
 			reverse_resolutions[hostname].append(address)
 
-	print("    \__ {0}: {1}".format(colored("Additional hostnames that were resolved", "yellow"), colored(len(reverse_resolutions.items()), "cyan")))
+	print(r"    \__ {0}: {1}".format(colored("Additional hostnames that were resolved", "yellow"), colored(len(reverse_resolutions.items()), "cyan")))
 
 	for hostname, addresses in reverse_resolutions.items():
-		print("      \__ {0}: {1}".format(colored(hostname, "cyan"), ", ".join([address for address in addresses])))
+		print(r"      \__ {0}: {1}".format(colored(hostname, "cyan"), ", ".join([address for address in addresses])))
 
 
 def connectScan(target):
@@ -621,10 +625,10 @@ def massConnectScan(db, domain, numberOfUniqueIPs, targets, threads, timestamp):
 					leaveFlag = True
 
 				if numberOfChunks == 1:
-					completed = tqdm(completed, total=len(PortChunk), desc="  \__ {0}".format(colored("Progress", "cyan")), dynamic_ncols=True, leave=leaveFlag)
+					completed = tqdm(completed, total=len(PortChunk), desc=r"  \__ {0}".format(colored("Progress", "cyan")), dynamic_ncols=True, leave=leaveFlag)
 
 				else:
-					completed = tqdm(completed, total=len(PortChunk), desc="  \__ {0}".format(colored("Progress {0}/{1}".format(iteration, numberOfChunks), "cyan")), dynamic_ncols=True, leave=leaveFlag)
+					completed = tqdm(completed, total=len(PortChunk), desc=r"  \__ {0}".format(colored("Progress {0}/{1}".format(iteration, numberOfChunks), "cyan")), dynamic_ncols=True, leave=leaveFlag)
 
 				for task in completed:
 					result = task.result()
@@ -708,10 +712,10 @@ def massRDAP(db, domain, threads):
 			completed = as_completed(tasks)
 
 			if numberOfChunks == 1:
-				completed = tqdm(completed, total=len(tasks), desc="  \__ {0}".format(colored("Progress", "cyan")), dynamic_ncols=True, leave=leaveFlag)
+				completed = tqdm(completed, total=len(tasks), desc=r"  \__ {0}".format(colored("Progress", "cyan")), dynamic_ncols=True, leave=leaveFlag)
 
 			#else:
-			#	completed = tqdm(completed, total=len(IPChunk), desc="  \__ {0}".format(colored("Progress {0}/{1}".format(iteration, numberOfChunks), "cyan")), dynamic_ncols=True, leave=leaveFlag)
+			#	completed = tqdm(completed, total=len(IPChunk), desc=r"  \__ {0}".format(colored("Progress {0}/{1}".format(iteration, numberOfChunks), "cyan")), dynamic_ncols=True, leave=leaveFlag)
 
 			for task in completed:
 				results = task.result()
@@ -751,17 +755,17 @@ def massRDAP(db, domain, threads):
 	del rdap_records
 	collect()
 
-	print("    \__ {0}:".format(colored("New autonomous Systems that were identified", "yellow")))
+	print(r"    \__ {0}:".format(colored("New autonomous Systems that were identified", "yellow")))
 
 	for row in db.query(ASN).filter(ASN.domain == domain).order_by(ASN.id, ASN.prefix):
 		if row == db.query(ASN).filter(ASN.domain == domain).order_by(ASN.id.desc(), ASN.prefix.desc()).first():
-			print("    __\__ {0}: {1}, {2}: {3}, {4}: {5}".format(colored("ASN", "cyan"), colored(row.id, "yellow"), colored("Prefix", "cyan"), colored(row.prefix, "yellow"), colored("Description", "cyan"), colored(row.description, "yellow")))
-			print("   \\")
+			print(r"    __\__ {0}: {1}, {2}: {3}, {4}: {5}".format(colored("ASN", "cyan"), colored(row.id, "yellow"), colored("Prefix", "cyan"), colored(row.prefix, "yellow"), colored("Description", "cyan"), colored(row.description, "yellow")))
+			print(r"   \\")
 
 		else:
-			print("      \__ {0}: {1}, {2}: {3}, {4}: {5}".format(colored("ASN", "cyan"), colored(row.id, "yellow"), colored("Prefix", "cyan"), colored(row.prefix, "yellow"), colored("Description", "cyan"), colored(row.description, "yellow")))
+			print(r"      \__ {0}: {1}, {2}: {3}, {4}: {5}".format(colored("ASN", "cyan"), colored(row.id, "yellow"), colored("Prefix", "cyan"), colored(row.prefix, "yellow"), colored("Description", "cyan"), colored(row.description, "yellow")))
 
-	print("    \__ {0}:".format(colored("New networks that were identified", "yellow")))
+	print(r"    \__ {0}:".format(colored("New networks that were identified", "yellow")))
 
 	for row in db.query(Network).filter(Network.domain == domain).order_by(Network.cidr):
-		print("      \__ {0}: {1}, {2}: {3}, {4}: {5}".format(colored("CIDR", "cyan"), colored(row.cidr, "yellow"), colored("Identifier", "cyan"), colored(row.identifier, "yellow"), colored("Country", "cyan"), colored(row.country, "yellow")))
+		print(r"      \__ {0}: {1}, {2}: {3}, {4}: {5}".format(colored("CIDR", "cyan"), colored(row.cidr, "yellow"), colored("Identifier", "cyan"), colored(row.identifier, "yellow"), colored("Country", "cyan"), colored(row.country, "yellow")))
